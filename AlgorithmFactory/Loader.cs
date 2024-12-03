@@ -246,6 +246,26 @@ logging.captureWarnings(True)"
                     assembly = Assembly.Load(assemblyBytes, debugInformationBytes);
                 }
 
+                // Automatically load all dependencies from the same directory
+                if (directoryName != null)
+                {
+                    foreach (var dependencyPath in Directory.GetFiles(directoryName, "*.dll"))
+                    {
+                        if (!dependencyPath.Equals(assemblyPath, StringComparison.OrdinalIgnoreCase))
+                        {
+                            try
+                            {
+                                Assembly.LoadFrom(dependencyPath);
+                                Log.Trace($"Loader.TryCreateILAlgorithm(): Loaded dependency: {dependencyPath}");
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error($"Loader.TryCreateILAlgorithm(): Failed to load dependency {dependencyPath}: {ex}");
+                            }
+                        }
+                    }
+                }
+
                 //Get the list of extention classes in the library:
                 var types = GetExtendedTypeNames(assembly);
                 Log.Debug("Loader.TryCreateILAlgorithm(): Assembly types: " + string.Join(",", types));
@@ -262,7 +282,7 @@ logging.captureWarnings(True)"
                 {
                     // reshuffle type[0] to the resolved typename
                     types[0] = _multipleTypeNameResolverFunction.Invoke(types);
-
+                    
                     if (string.IsNullOrEmpty(types[0]))
                     {
                         errorMessage = "Algorithm type name not found, or unable to resolve multiple algorithm types to a single type. Please verify algorithm type name matches the algorithm name in the configuration file and that there is one and only one class derived from QCAlgorithm.";
